@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase, openedFromRecoveryLink } from "@/lib/supabaseClient";
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
 import StatsBar from "@/components/StatsBar";
@@ -134,6 +134,8 @@ export default function Home() {
 
   // --- The person opened the "reset my password" link from their email ---
   useEffect(() => {
+    // The event can fire before this listener exists, so also check the link itself.
+    if (openedFromRecoveryLink) setView("reset");
     const { data } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") setView("reset");
     });
