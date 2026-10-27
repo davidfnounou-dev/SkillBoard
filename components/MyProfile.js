@@ -4,9 +4,10 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import Avatar from "@/components/Avatar";
 import { useLang } from "@/lib/i18n";
+import { catalogLabels, canonicalSkillName, skillLabel, findEntry, ZONES } from "@/lib/skills";
 
 export default function MyProfile({ currentUser, setCurrentUser, onBack }) {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [name, setName] = useState(currentUser.name || "");
   const [location, setLocation] = useState(currentUser.location || "");
   const [bio, setBio] = useState(currentUser.bio || "");
@@ -77,9 +78,20 @@ export default function MyProfile({ currentUser, setCurrentUser, onBack }) {
  
   async function addSkill() {
     if (!skillName.trim()) { setSkillNote(t("profile.enterSkillName")); return; }
+    // If it's a known trade ("plumber", "plomero", "Plomeria"...) save it under one
+    // standard name, so everyone searching in either language finds it.
+    const finalName = canonicalSkillName(skillName);
+    const newEntry = findEntry(finalName);
+    const already = skills.some((s) => {
+      const e = findEntry(s.skill_name);
+      return newEntry
+        ? e && e.id === newEntry.id
+        : s.skill_name.trim().toLowerCase() === finalName.toLowerCase();
+    });
+    if (already) { setSkillNote(t("profile.skillDuplicate")); return; }
     const { error } = await supabase.from("skills").insert({
       user_id: currentUser.id,
-      skill_name: skillName.trim(),
+      skill_name: finalName,
       experience: skillExp.trim(),
       description: skillDesc.trim(),
     });
@@ -127,7 +139,10 @@ export default function MyProfile({ currentUser, setCurrentUser, onBack }) {
           </div>
           <div className="field">
             <label>{t("profile.location")}</label>
-            <input value={location} placeholder={t("profile.locationPlaceholder")} onChange={(e) => setLocation(e.target.value)} />
+            <input list="my-zones" value={location} placeholder={t("profile.locationPlaceholder")} onChange={(e) => setLocation(e.target.value)} />
+            <datalist id="my-zones">
+              {ZONES.map((z) => <option key={z} value={z} />)}
+            </datalist>
           </div>
         </div>
         <div className="field">
@@ -147,7 +162,7 @@ export default function MyProfile({ currentUser, setCurrentUser, onBack }) {
             skills.map((s) => (
               <div key={s.id} className="my-skill-row">
                 <div className="my-skill-info">
-                  <strong>{s.skill_name}</strong>
+                  <strong>{skillLabel(s.skill_name, lang)}</strong>
                   {s.experience && <div className="meta">{t("profile.experienceOf", { exp: s.experience })}</div>}
                   {s.description && <div className="desc">{s.description}</div>}
                 </div>
@@ -162,7 +177,11 @@ export default function MyProfile({ currentUser, setCurrentUser, onBack }) {
           <div className="field-row">
             <div className="field">
               <label>{t("profile.skill")}</label>
-              <input value={skillName} placeholder={t("profile.skillPlaceholder")} onChange={(e) => setSkillName(e.target.value)} />
+              <input list="my-skill-options" value={skillName} placeholder={t("profile.skillPlaceholder")} onChange={(e) => setSkillName(e.target.value)} />
+              <datalist id="my-skill-options">
+                {catalogLabels(lang).map((label) => <option key={label} value={label} />)}
+              </datalist>
+              <div className="field-hint">{t("profile.skillHint")}</div>
             </div>
             <div className="field">
               <label>{t("profile.experience")}</label>
