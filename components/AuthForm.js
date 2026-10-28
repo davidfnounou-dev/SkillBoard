@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useLang, SUPABASE_ERROR_KEYS, SUPABASE_ERROR_CODES } from "@/lib/i18n";
 
 // mode: "login" | "signup" | "forgot"
-export default function AuthForm({ mode, setMode, initialIntent = "client", onLoggedIn, onSignedUp }) {
+export default function AuthForm({ mode, setMode, initialIntent = "client", initialError = "", onLoggedIn, onSignedUp }) {
   const { t } = useLang();
 
   // Translate Supabase (English) errors into the active language.
@@ -25,7 +25,7 @@ export default function AuthForm({ mode, setMode, initialIntent = "client", onLo
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [intent, setIntent] = useState(initialIntent); // "client" | "professional"
-  const [error, setError] = useState("");
+  const [error, setError] = useState(initialError);
   const [notice, setNotice] = useState("");
   const [duplicate, setDuplicate] = useState(false);
   const [busy, setBusy] = useState(false);

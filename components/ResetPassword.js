@@ -5,13 +5,28 @@ import { supabase } from "@/lib/supabaseClient";
 import { useLang, SUPABASE_ERROR_KEYS, SUPABASE_ERROR_CODES } from "@/lib/i18n";
 
 // Shown when the person opens the "reset password" link from their email.
-export default function ResetPassword({ onDone }) {
+export default function ResetPassword({ onDone, tokenHash = null }) {
   const { t } = useLang();
   const [password, setPassword] = useState("");
   const [again, setAgain] = useState("");
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
+  // With a token_hash link we must confirm it (button press) before asking for the new password.
+  const [verified, setVerified] = useState(!tokenHash);
+
+  async function confirmLink() {
+    setError("");
+    setBusy(true);
+    try {
+      const { error: vErr } = await supabase.auth.verifyOtp({ type: "recovery", token_hash: tokenHash });
+      if (vErr) { setError(t("auth.err.linkExpired")); return; }
+      window.history.replaceState({}, "", window.location.pathname);
+      setVerified(true);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   const traducirError = (err) => {
     const key =
@@ -33,6 +48,22 @@ export default function ResetPassword({ onDone }) {
     } finally {
       setBusy(false);
     }
+  }
+
+  if (!verified) {
+    return (
+      <section className="auth-card">
+        <div className="auth-forgot-head">
+          <h2>{t("auth.newPasswordTitle")}</h2>
+        </div>
+        <div className="auth-form">
+          <p className="auth-error" role="alert">{error}</p>
+          <button className="btn btn-primary btn-block" onClick={confirmLink} disabled={busy}>
+            {busy ? t("auth.wait") : t("auth.continueReset")}
+          </button>
+        </div>
+      </section>
+    );
   }
 
   if (done) {

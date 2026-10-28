@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { supabase, openedFromRecoveryLink } from "@/lib/supabaseClient";
+import { supabase, openedFromRecoveryLink, recoveryTokenHash, linkError } from "@/lib/supabaseClient";
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
 import StatsBar from "@/components/StatsBar";
@@ -135,7 +135,8 @@ export default function Home() {
   // --- The person opened the "reset my password" link from their email ---
   useEffect(() => {
     // The event can fire before this listener exists, so also check the link itself.
-    if (openedFromRecoveryLink) setView("reset");
+    if (openedFromRecoveryLink || recoveryTokenHash) setView("reset");
+    if (linkError) { setAuthMode("forgot"); setView("auth"); }
     const { data } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") setView("reset");
     });
@@ -266,12 +267,13 @@ export default function Home() {
         {loading ? (
           <p className="empty-state">{t("app.loading")}</p>
         ) : view === "reset" ? (
-          <ResetPassword onDone={handlePasswordDone} />
+          <ResetPassword onDone={handlePasswordDone} tokenHash={recoveryTokenHash} />
         ) : view === "auth" ? (
           <AuthForm
             mode={authMode}
             setMode={setAuthMode}
             initialIntent={authIntent}
+            initialError={linkError ? t("auth.err.linkExpired") : ""}
             onLoggedIn={handleLoggedIn}
             onSignedUp={handleSignedUp}
           />
