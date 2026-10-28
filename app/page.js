@@ -1,12 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { supabase, openedFromRecoveryLink, recoveryTokenHash, linkError } from "@/lib/supabaseClient";
+import { supabase } from "@/lib/supabaseClient";
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
 import StatsBar from "@/components/StatsBar";
 import AuthForm from "@/components/AuthForm";
-import ResetPassword from "@/components/ResetPassword";
 import Browse from "@/components/Browse";
 import MyProfile from "@/components/MyProfile";
 import ViewProfile from "@/components/ViewProfile";
@@ -16,7 +15,7 @@ import { skillId, phon } from "@/lib/skills";
 
 export default function Home() {
   const { t } = useLang();
-  // Which screen: "browse" | "auth" | "reset" | "profile" | "viewProfile" | "messages"
+  // Which screen: "browse" | "auth" | "profile" | "viewProfile" | "messages"
   const [view, setView] = useState("browse");
   const [authMode, setAuthMode] = useState("login");
   const [authIntent, setAuthIntent] = useState("client");
@@ -132,17 +131,6 @@ export default function Home() {
     })();
   }, [loadSession, loadDirectory]);
 
-  // --- The person opened the "reset my password" link from their email ---
-  useEffect(() => {
-    // The event can fire before this listener exists, so also check the link itself.
-    if (openedFromRecoveryLink || recoveryTokenHash) setView("reset");
-    if (linkError) { setAuthMode("forgot"); setView("auth"); }
-    const { data } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") setView("reset");
-    });
-    return () => data.subscription.unsubscribe();
-  }, []);
-
   // --- Numbers for the stats bar (all real, computed from the database) ---
   const stats = useMemo(() => {
     const pros = profiles.filter((p) => (p.skills || []).length > 0);
@@ -195,11 +183,6 @@ export default function Home() {
     } else {
       goBrowse();
     }
-  }
-
-  async function handlePasswordDone() {
-    await loadSession();
-    goBrowse();
   }
 
   async function logout() {
@@ -266,14 +249,11 @@ export default function Home() {
 
         {loading ? (
           <p className="empty-state">{t("app.loading")}</p>
-        ) : view === "reset" ? (
-          <ResetPassword onDone={handlePasswordDone} tokenHash={recoveryTokenHash} />
         ) : view === "auth" ? (
           <AuthForm
             mode={authMode}
             setMode={setAuthMode}
             initialIntent={authIntent}
-            initialError={linkError ? t("auth.err.linkExpired") : ""}
             onLoggedIn={handleLoggedIn}
             onSignedUp={handleSignedUp}
           />

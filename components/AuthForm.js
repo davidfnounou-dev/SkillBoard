@@ -4,8 +4,8 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useLang, SUPABASE_ERROR_KEYS, SUPABASE_ERROR_CODES } from "@/lib/i18n";
 
-// mode: "login" | "signup" | "forgot"
-export default function AuthForm({ mode, setMode, initialIntent = "client", initialError = "", onLoggedIn, onSignedUp }) {
+// mode: "login" | "signup"
+export default function AuthForm({ mode, setMode, initialIntent = "client", onLoggedIn, onSignedUp }) {
   const { t } = useLang();
 
   // Translate Supabase (English) errors into the active language.
@@ -25,7 +25,7 @@ export default function AuthForm({ mode, setMode, initialIntent = "client", init
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [intent, setIntent] = useState(initialIntent); // "client" | "professional"
-  const [error, setError] = useState(initialError);
+  const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [duplicate, setDuplicate] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -85,13 +85,6 @@ export default function AuthForm({ mode, setMode, initialIntent = "client", init
         if (pErr) { setError(traducirError(pErr)); return; }
 
         await onSignedUp(intent);
-      } else if (mode === "forgot") {
-        const { error: resetErr } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-          redirectTo: window.location.origin,
-        });
-        if (resetErr) { setError(traducirError(resetErr)); return; }
-        // Same message whether or not the email exists (so nobody can probe accounts).
-        setNotice(t("auth.linkSent"));
       } else {
         const { error: loginErr } = await supabase.auth.signInWithPassword({
           email: email.trim(),
@@ -109,35 +102,26 @@ export default function AuthForm({ mode, setMode, initialIntent = "client", init
     ? t("auth.wait")
     : mode === "signup"
     ? t("auth.createAccount")
-    : mode === "forgot"
-    ? t("auth.sendLink")
     : t("auth.login");
 
   return (
     <section className="auth-card">
-      {mode === "forgot" ? (
-        <div className="auth-forgot-head">
-          <h2>{t("auth.forgotTitle")}</h2>
-          <p>{t("auth.forgotHelp")}</p>
-        </div>
-      ) : (
-        <div className="auth-tabs">
-          <button
-            type="button"
-            className={`auth-tab ${mode === "login" ? "active" : ""}`}
-            onClick={() => switchMode("login")}
-          >
-            {t("auth.tab.login")}
-          </button>
-          <button
-            type="button"
-            className={`auth-tab ${mode === "signup" ? "active" : ""}`}
-            onClick={() => switchMode("signup")}
-          >
-            {t("auth.tab.signup")}
-          </button>
-        </div>
-      )}
+      <div className="auth-tabs">
+        <button
+          type="button"
+          className={`auth-tab ${mode === "login" ? "active" : ""}`}
+          onClick={() => switchMode("login")}
+        >
+          {t("auth.tab.login")}
+        </button>
+        <button
+          type="button"
+          className={`auth-tab ${mode === "signup" ? "active" : ""}`}
+          onClick={() => switchMode("signup")}
+        >
+          {t("auth.tab.signup")}
+        </button>
+      </div>
 
       <form className="auth-form" onSubmit={handleSubmit}>
         {mode === "signup" && (
@@ -190,7 +174,7 @@ export default function AuthForm({ mode, setMode, initialIntent = "client", init
             required
           />
         </div>
-        {mode !== "forgot" && (
+        {(
           <div className="field">
             <label htmlFor="authPassword">{t("auth.password")}</label>
             <input
@@ -205,20 +189,11 @@ export default function AuthForm({ mode, setMode, initialIntent = "client", init
           </div>
         )}
 
-        {mode === "login" && (
-          <button type="button" className="link-btn forgot-link" onClick={() => switchMode("forgot")}>
-            {t("auth.forgot")}
-          </button>
-        )}
-
         <p className="auth-error" role="alert">{error}</p>
         {duplicate && (
           <div className="auth-dup-actions">
             <button type="button" className="btn btn-ghost btn-small" onClick={() => switchMode("login")}>
               {t("auth.login")}
-            </button>
-            <button type="button" className="btn btn-ghost btn-small" onClick={() => switchMode("forgot")}>
-              {t("auth.forgot")}
             </button>
           </div>
         )}
@@ -228,11 +203,6 @@ export default function AuthForm({ mode, setMode, initialIntent = "client", init
           {submitLabel}
         </button>
 
-        {mode === "forgot" && (
-          <button type="button" className="link-btn back-link" onClick={() => switchMode("login")}>
-            {t("auth.backToLogin")}
-          </button>
-        )}
       </form>
     </section>
   );
